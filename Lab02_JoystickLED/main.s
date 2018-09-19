@@ -74,7 +74,67 @@
 ;*****************************************************************
 
 ;**************************Psuedocode*****************************
-;begin
-;   
+;include constraints
+;
+;begin main
+;   set appropriate offsets
+;
+;	**When high, count up and wait until a certain value to set LEDs. When low, count down values until it has been low long enough to shut off LEDs.**
+;	**count - designed to increment and check the 5 buttons seperately
+;	**When count reaches onValue, LED goes high
+;
+;	loop
+;		**center** - toggles LEDs
+;		if center is high
+;			centerCount ++
+;		if center is low
+;			centerCount --
+;		if centerCount == onValue
+;			*toggle on both LEDs*
+;			LEDs = !LEDs
+;			B loop
+;
+;		**left** - turns on red
+;		if left is high
+;			leftCount ++
+;		if left is low
+;			leftCount --
+;		if leftCount == onValue
+;			turn on red LED
+;			turn off green LED
+;			B loop
+;
+;		**right** - turns on green
+;		if right is high
+;			rightCount ++
+;		if right is low
+;			rightCount --
+;		if rightCount == onValue
+;			turn on green LED
+;			turn off red LED
+;			B loop
+;
+;		**up** - turns on LEDs
+;		if up is high and != onValue
+;			upCount ++
+;		if up low
+;			centerCount --
+;		if centerCount == onValue
+;			turn on both LEDs
+;			B loop
+;
+;		**down** - turns off LEDs
+;		if down is high and != onValue
+;			downCount ++
+;		if down is low
+;			centerCount --
+;		if downCount == onValue
+;			turn off both LEDs
+;			B loop
+;
+;	turn off LEDs
+;
+;	B loop
+;	
 ;end
 ;*****************************************************************
