@@ -77,64 +77,178 @@
 ;include constraints
 ;
 ;begin main
-;   set appropriate offsets
-;
-;	**When high, count up and wait until a certain value to set LEDs. When low, count down values until it has been low long enough to shut off LEDs.**
-;	**count - designed to increment and check the 5 buttons seperately
-;	**When count reaches onValue, LED goes high
+;   set appropriate offsets and assign registers	
 ;
 ;	loop
+;
+;		loop through input values from joystick until one is triggered
+;		branch to change LED values for the appropriate joystick value
+;
 ;		**center** - toggles LEDs
-;		if center is high
-;			centerCount ++
-;		if center is low
-;			centerCount --
-;		if centerCount == onValue
 ;			*toggle on both LEDs*
 ;			LEDs = !LEDs
-;			B loop
+;			B debounce
 ;
-;		**left** - turns on red
-;		if left is high
-;			leftCount ++
-;		if left is low
-;			leftCount --
-;		if leftCount == onValue
-;			turn on red LED
-;			turn off green LED
-;			B loop
+;		**left** - toggle red LED
+;			*toggle on both LEDs*
+;			LEDs = !LEDs
+;			B debounce
 ;
 ;		**right** - turns on green
-;		if right is high
-;			rightCount ++
-;		if right is low
-;			rightCount --
-;		if rightCount == onValue
-;			turn on green LED
-;			turn off red LED
-;			B loop
+;			*toggle on both LEDs*
+;			LEDs = !LEDs
+;			B debounce
 ;
 ;		**up** - turns on LEDs
-;		if up is high and != onValue
-;			upCount ++
-;		if up low
-;			centerCount --
-;		if centerCount == onValue
-;			turn on both LEDs
-;			B loop
+;			*toggle on both LEDs*
+;			LEDs = !LEDs
+;			B debounce
 ;
 ;		**down** - turns off LEDs
-;		if down is high and != onValue
-;			downCount ++
-;		if down is low
-;			centerCount --
-;		if downCount == onValue
-;			turn off both LEDs
-;			B loop
+;			*toggle on both LEDs*
+;			LEDs = !LEDs
+;			B debounce
 ;
-;	turn off LEDs
+;		**debounce**
+;			while joystick is not zero, stay in this loop
+;			when zero, branch to loop
 ;
 ;	B loop
 ;	
 ;end
 ;*****************************************************************
+
+
+;*******************BEGIN INITIALIZATION**************************
+	INCLUDE core_cm4_constants.s		; Load Constant Definitions
+	INCLUDE stm32l476xx_constants.s     ; Load register values 
+
+	AREA    main, CODE, READONLY		;define code below, once on boar it cannot be modified
+	EXPORT	__main						; make __main visible to linker
+	ENTRY			
+				
+__main	PROC							;start main
+	
+	;Green LED setup PE8
+	LDR r0, =RCC_BASE					;Load base reset and clk control address into register 0
+	LDR r1, [r0, #RCC_AHB2ENR]			;Load base offset by AHB2 peripheral clk enable reg
+	ORR r1, r1, #RCC_AHB2ENR_GPIOEEN	;Logical or between r1 and AHB2 port B
+	STR r1, [r0, #RCC_AHB2ENR]			;Store back into r1
+	LDR r0, =GPIOE_BASE					;Load r0 with GPIOB base address
+	LDR r1, [r0, #GPIO_MODER]			;Load r1 with base offset by GPIO mode address
+	AND r1, r1, #(0xFFFCFFFF)			;Logical and between r1 and hex value - change MODE2 to input mode 
+	ORR r1, r1, #(0x00010000)			;Logical or between r1 and hex value - change MODE2 to GP output mode
+	STR r1, [r0, #GPIO_MODER]			;Store r1 into GPIO mode adress
+	LDR r1, [r0, #GPIO_ODR]				;Load r1 with output data address - changes output pin
+	
+	;Red LED setup PB2, almost identical to above
+	LDR r2, =RCC_BASE		
+	LDR r3, [r2, #RCC_AHB2ENR]				
+	ORR r3, r3, #RCC_AHB2ENR_GPIOBEN		
+	STR r3, [r2, #RCC_AHB2ENR]			
+	LDR r2, =GPIOB_BASE					
+	LDR r3, [r2, #GPIO_MODER]			
+	AND r3, r3, #(0xFFFFFFCF)			
+	ORR r3, r3, #(0x00000010)			
+	STR r3, [r2, #GPIO_MODER]			
+	LDR r3, [r2, #GPIO_ODR]
+				
+	;Joystick setup pins PA0 to PA3 & PA5
+	;first value sets input mode on MODER, then feeds input values through PUPDR to input
+	LDR r6, =0xFFFFF300 				;value for input mode on joystick
+	LDR r4, =RCC_BASE	
+	LDR r5, [r4, #RCC_AHB2ENR]				
+	ORR r5, r5, #RCC_AHB2ENR_GPIOAEN		
+	STR r5, [r4, #RCC_AHB2ENR]			
+	LDR r4, =GPIOA_BASE					
+	LDR r5, [r4, #GPIO_MODER]	
+	AND r5, r6 							;changes PA0-PA3 & PA5 to input mode
+	STR r5, [r4, #GPIO_MODER]
+	LDR r6, =0x8AA 						;figure out what this 'masking' does
+	LDR r5, [r4, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
+	ORR r5, r6 							;figure out what this does
+	STR r5, [r4, #GPIO_PUPDR]
+	LDR r6, =0x00000000 				;clears input register
+	STR r6, [r4, #GPIO_IDR]
+;****************************************************************
+
+;*************BEGIN JOYSTICK CHECK*******************************
+loop
+	LDR r5, [r4, #GPIO_IDR] 			;load the input into r5
+	
+;	***compare inputs***
+	
+	;compare and branch to center
+	;all below are similar
+	LDR r6, =0x0000A001 				;value to compare joystick to check if center is pushed
+	CMP r5, r6 							;compare joystick to check value
+	BEQ center 							;if equal, branch to appropriate logic
+	
+	;compare and branch to left
+	LDR r6, =0x0000A002
+	CMP r5, r6
+	BEQ left
+	
+	;compare and branch to right
+	LDR r6, =0x0000A004
+	CMP r5, r6
+	BEQ right
+	
+	;compare and branch to up
+	LDR r6, =0x0000A008
+	CMP r5, r6
+	BEQ up
+	
+	;compare and branch to down
+	LDR r6, =0x0000A020
+	CMP r5, r6
+	BEQ down
+	B loop
+;***************************************************************
+
+;*****************BEGIN LED LOGIC*******************************
+center ; toggle both
+	EOR r1, r1, #(0x00000100) 			; green LED toggle
+	STR r1, [r0, #GPIO_ODR]				; send to GPIO
+	EOR r3, r3, #(0x00000004) 			; red LED toggle
+	STR r3, [r2, #GPIO_ODR]				; send to GPIO
+	B trigger							; send to debouncer
+	
+left ; toggle red
+	EOR r3, r3, #(0x00000004) 			; red LED off if on, vice-versa
+	STR r3, [r2, #GPIO_ODR]				; send to GPIO
+	B trigger
+	
+right ; toggle green
+	EOR r1, r1, #(0x00000100) 			; green LED off if on, vice-versa
+	STR r1, [r0, #GPIO_ODR]				; send to GPIO
+	B trigger
+	
+up ; both on
+	LDR r1, =0x00000100 				; green LED on
+	STR r1, [r0, #GPIO_ODR] 			; send to GPIO
+	LDR r3, =0x00000004 				; red LED on
+	STR r3, [r2, #GPIO_ODR]				; send to GPIO
+	B trigger
+
+down ; both off
+	LDR r1, =0x00000000 				; green LED off
+	STR r1, [r0, #GPIO_ODR] 			; send to gpio
+	LDR r3, =0x00000000 				; red LED off
+	STR r3, [r2, #GPIO_ODR]				; send to gpio
+	B trigger
+	
+trigger ;debouncer
+	LDR r5, [r4, #GPIO_IDR]
+	CMP r5, #0x0000A000 ;joystick press must be zero for program to leave loop
+	BEQ loop
+	B trigger
+;************************************************************************
+
+;****************************END MAIN PROGRAM****************************
+
+	ENDP
+					
+	ALIGN
+
+	END
