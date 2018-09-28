@@ -94,13 +94,13 @@
 
 ;*******************BEGIN INITIALIZATION**************************
 	INCLUDE core_cm4_constants.s		; Load Constant Definitions
-	INCLUDE stm32l476xx_constants.s     ; Load register values 
+	INCLUDE stm32l476xx_constants.s     	; Load register values 
 
 	AREA    main, CODE, READONLY		;define code below, once on boar it cannot be modified
-	EXPORT	__main						; make __main visible to linker
+	EXPORT	__main				; make __main visible to linker
 	ENTRY			
 				
-__main	PROC							;start main
+__main	PROC					;start main
 	
 	;set up 6 pins in GPIO E
 	LDR r0, =RCC_BASE					
@@ -112,12 +112,12 @@ __main	PROC							;start main
 	LDR r1, [r0, #GPIO_MODER]
 	STR r6, [r0, #GPIO_MODER]
 	LDR r6, =0xFC00
-	LDR r1, [r0, #GPIO_OTYPER]			;sets up voltage drain
+	LDR r1, [r0, #GPIO_OTYPER]		;sets up voltage drain
 	ORR r1, r6
 	STR r1, [r0, #GPIO_OTYPER]
 	LDR r6, =0xAAAAAAAA					
-	LDR r1, [r0, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
-	ORR r1, r6 							;figure out what this does
+	LDR r1, [r0, #GPIO_PUPDR] 		;adds a pull up, pull down reg to the input
+	ORR r1, r6 				;figure out what this does
 	STR r1, [r0, #GPIO_PUPDR]
 	LDR r6, =0xFFFFFFFF					
 	STR r6, [r0, #GPIO_ODR]			
@@ -136,31 +136,31 @@ __main	PROC							;start main
 	ORR r3, r6
 	STR r3, [r2, #GPIO_OTYPER]
 	LDR r6, =0xAAAAAAAA					
-	LDR r3, [r2, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
-	ORR r3, r6 							;figure out what this does
+	LDR r3, [r2, #GPIO_PUPDR] 		;adds a pull up, pull down reg to the input
+	ORR r3, r6 				;figure out what this does
 	STR r3, [r2, #GPIO_PUPDR]
 	LDR r6, =0xFFFFFFFF	 				
 	STR r6, [r2, #GPIO_ODR]
 				
 	;Joystick setup pins PA0 to PA3 & PA5
 	;first value sets input mode on MODER, then feeds input values through PUPDR to input
-	LDR r6, =0xFFFFF300 				;value for input mode on joystick
+	LDR r6, =0xFFFFF300 			;value for input mode on joystick
 	LDR r4, =RCC_BASE	
 	LDR r5, [r4, #RCC_AHB2ENR]				
 	ORR r5, r5, #RCC_AHB2ENR_GPIOAEN		
 	STR r5, [r4, #RCC_AHB2ENR]			
 	LDR r4, =GPIOA_BASE					
 	LDR r5, [r4, #GPIO_MODER]	
-	AND r5, r6 							;changes PA0-PA3 & PA5 to input mode
+	AND r5, r6 				;changes PA0-PA3 & PA5 to input mode
 	STR r5, [r4, #GPIO_MODER]
 	LDR r6, =0x8AA 						
-	LDR r5, [r4, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
-	ORR r5, r6 							;figure out what this does
+	LDR r5, [r4, #GPIO_PUPDR] 		;adds a pull up, pull down reg to the input
+	ORR r5, r6 				;figure out what this does
 	STR r5, [r4, #GPIO_PUPDR]
-	LDR r6, =0x00000000 				;clears input register
+	LDR r6, =0x00000000 			;clears input register
 	STR r6, [r4, #GPIO_IDR]
 	
-	LDR r0, =RCC_BASE					;turn HSI clk on
+	LDR r0, =RCC_BASE			;turn HSI clk on
 	LDR r1, [r0, #RCC_CR]
 	ORR r1, #0x00000100
 	STR r1, [r0, #RCC_CR]
@@ -168,22 +168,22 @@ __main	PROC							;start main
 HSIclk
 	LDR r1, [r0, #RCC_CR]
 	LDR r6, =0x00000563	
-	CMP r1, r6							;check if HSI is ready
+	CMP r1, r6				;check if HSI is ready
 	BEQ HSIclk
 	
 	LDR r0, =GPIOE_BASE	
 	
 loop
-	LDR r6, =0x1046A					;clk offset to 2Mhz
-	mov r12, r6		 					;clk divider
+	LDR r6, =0x1046A			;clk offset to 2Mhz
+	mov r12, r6		 		;clk divider
 	
 ;program sits in loop until clk offset is hit, also checks for button pushes
 DELAY 
 	; center joystick, stop
 	LDR r5, [r4, #GPIO_IDR]
-	LDR r6, =0x0000A001 				;value to compare joystick to check if center is pushed
-	CMP r5, r6 							;compare joystick to check value
-	BEQ stop 							;if equal, branch to appropriate logic
+	LDR r6, =0x0000A001 			;value to compare joystick to check if center is pushed
+	CMP r5, r6 				;compare joystick to check value
+	BEQ stop 				;if equal, branch to appropriate logic
 	
 	; left joystick, reset
 	LDR r6, =0x0000A002
@@ -195,17 +195,17 @@ DELAY
 	CMP r5, r6
 	BEQ start
 	
-	SUBS r12, #1						;decrement from clk offset until 0
-	CMP r12, #0x0						;does not leave until r12 is 0
+	SUBS r12, #1				;decrement from clk offset until 0
+	CMP r12, #0x0				;does not leave until r12 is 0
 	bne DELAY
 	
-	cmp r8, #1 							; If clock is disabled, restart the loop
+	cmp r8, #1 				; If clock is disabled, restart the loop
 	BNE loop
-	ADD r9, #0x1						;increment led value
+	ADD r9, #0x1				;increment led value
 	LDR r6, =0x400
-	CMP r9, r6							;check if clock value has been reached
-	BNE display							;branch to display
-	LDR r9, =0x0						;if equal, reset r9
+	CMP r9, r6				;check if clock value has been reached
+	BNE display				;branch to display
+	LDR r9, =0x0				;if equal, reset r9
 	
 display
 	;load r9 into r10, mask the appropriate bits and set them to the right point of the output GPIOs
@@ -246,7 +246,7 @@ reset ; set the counter to 0
 	
 trigger ;debouncer
 	LDR r5, [r4, #GPIO_IDR]
-	CMP r5, #0x0000A000 ;joystick press must be zero for program to leave loop
+	CMP r5, #0x0000A000 			;joystick press must be zero for program to leave loop
 	BEQ loop
 	B trigger
 	
