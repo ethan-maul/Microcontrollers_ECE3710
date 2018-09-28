@@ -78,19 +78,16 @@
 ;begin main
 ;   set appropriate offsets and assign registers
 ;	make each bit assigned to a specific GPIO port	
+;	set clk
 ;
-;loop 					;always starts here on reset
-;	assign counter value to start at zero
+;loop
+;	set clk offset
+;	increment through loop, checking button inputs
+;	when done with loop, increment binary value
 ;	
-;counter
-;	count up the value by 1
-;	compare input start/stop values to see if they are true
-;	BNE counter 		;branch if not equal back to the counter loop
+;	logic to load outputs and display
 ;
-;	hold loop until next value is input to start
-;
-;	possible button debounce loop if needed	
-;	
+;	button logic
 ;end
 ;*****************************************************************
 
@@ -105,6 +102,7 @@
 				
 __main	PROC							;start main
 	
+	;set up 6 pins in GPIO E
 	LDR r0, =RCC_BASE					
 	LDR r1, [r0, #RCC_AHB2ENR]			
 	ORR r1, r1, #RCC_AHB2ENR_GPIOEEN	
@@ -114,16 +112,17 @@ __main	PROC							;start main
 	LDR r1, [r0, #GPIO_MODER]
 	STR r6, [r0, #GPIO_MODER]
 	LDR r6, =0xFC00
-	LDR r1, [r0, #GPIO_OTYPER]
+	LDR r1, [r0, #GPIO_OTYPER]			;sets up voltage drain
 	ORR r1, r6
 	STR r1, [r0, #GPIO_OTYPER]
-	LDR r6, =0xAAAAAAAA					;figure out what this 'masking' does
+	LDR r6, =0xAAAAAAAA					
 	LDR r1, [r0, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
 	ORR r1, r6 							;figure out what this does
 	STR r1, [r0, #GPIO_PUPDR]
 	LDR r6, =0xFFFFFFFF					
 	STR r6, [r0, #GPIO_ODR]			
 
+	;set up 4 pins in GPIO B
 	LDR r2, =RCC_BASE		
 	LDR r3, [r2, #RCC_AHB2ENR]				
 	ORR r3, r3, #RCC_AHB2ENR_GPIOBEN		
@@ -136,7 +135,7 @@ __main	PROC							;start main
 	LDR r3, [r2, #GPIO_OTYPER]
 	ORR r3, r6
 	STR r3, [r2, #GPIO_OTYPER]
-	LDR r6, =0xAAAAAAAA					;figure out what this 'masking' does
+	LDR r6, =0xAAAAAAAA					
 	LDR r3, [r2, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
 	ORR r3, r6 							;figure out what this does
 	STR r3, [r2, #GPIO_PUPDR]
@@ -154,7 +153,7 @@ __main	PROC							;start main
 	LDR r5, [r4, #GPIO_MODER]	
 	AND r5, r6 							;changes PA0-PA3 & PA5 to input mode
 	STR r5, [r4, #GPIO_MODER]
-	LDR r6, =0x8AA 						;figure out what this 'masking' does
+	LDR r6, =0x8AA 						
 	LDR r5, [r4, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
 	ORR r5, r6 							;figure out what this does
 	STR r5, [r4, #GPIO_PUPDR]
@@ -175,45 +174,49 @@ HSIclk
 	LDR r0, =GPIOE_BASE	
 	
 loop
-	LDR r6, =0x1046A	
+	LDR r6, =0x1046A					;clk offset to 2Mhz
 	mov r12, r6		 					;clk divider
+	
+;program sits in loop until clk offset is hit, also checks for button pushes
 DELAY 
-	; center, stop
+	; center joystick, stop
 	LDR r5, [r4, #GPIO_IDR]
 	LDR r6, =0x0000A001 				;value to compare joystick to check if center is pushed
 	CMP r5, r6 							;compare joystick to check value
 	BEQ stop 							;if equal, branch to appropriate logic
 	
-	; left, reset
+	; left joystick, reset
 	LDR r6, =0x0000A002
 	CMP r5, r6
 	BEQ reset
 	
-	; right, start
+	; right joystick, start
 	LDR r6, =0x0000A004
 	CMP r5, r6
 	BEQ start
 	
-	SUBS r12, #1
-	CMP r12, #0x0
+	SUBS r12, #1						;decrement from clk offset until 0
+	CMP r12, #0x0						;does not leave until r12 is 0
 	bne DELAY
 	
-	cmp r8, #1 ; If clock is disabled, restart the loop
+	cmp r8, #1 							; If clock is disabled, restart the loop
 	BNE loop
-	ADD r9, #0x1
+	ADD r9, #0x1						;increment led value
 	LDR r6, =0x400
-	CMP r9, r6
-	BNE display
-	LDR r9, =0x0
+	CMP r9, r6							;check if clock value has been reached
+	BNE display							;branch to display
+	LDR r9, =0x0						;if equal, reset r9
 	
 display
 	;load r9 into r10, mask the appropriate bits and set them to the right point of the output GPIOs
+	
 	;bits 0 and 1 of counter, shift them and add them to r11 - to load into GPIO ports 2 and 3
 	EOR r10, r9, 0xFFFFFFFF
 	MOV r11, #0x0
 	AND r10, #0x3
 	LSL r10, #2
 	ORR r11, r10
+	
 	;bits 2 and 3 of counter, shift them and add them to r11 - to load into the GPIO ports 6 and 7
 	EOR r10, r9, 0xFFFFFFFF
 	AND r10, #0xC
@@ -221,6 +224,7 @@ display
 	ORR r11, r10
 	STR r11, [r2, #GPIO_ODR]
 	
+	;bits 4 to 9
 	EOR r10, r9, 0xFFFFFFFF
 	AND r10, #0x3F0
 	LSL r10, #6
