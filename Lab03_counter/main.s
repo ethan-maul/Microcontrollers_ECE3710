@@ -110,15 +110,18 @@ __main	PROC							;start main
 	ORR r1, r1, #RCC_AHB2ENR_GPIOEEN	
 	STR r1, [r0, #RCC_AHB2ENR]			
 	LDR r0, =GPIOE_BASE		
-	LDR r6, =0x05550000	
+	LDR r6, =0x55500000	
 	LDR r1, [r0, #GPIO_MODER]
-	AND r1, r6
-	STR r1, [r0, #GPIO_MODER]
+	STR r6, [r0, #GPIO_MODER]
+	LDR r6, =0xFC00
+	LDR r1, [r0, #GPIO_OTYPER]
+	ORR r1, r6
+	STR r1, [r0, #GPIO_OTYPER]
 	LDR r6, =0xAAAAAAAA					;figure out what this 'masking' does
 	LDR r1, [r0, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
 	ORR r1, r6 							;figure out what this does
 	STR r1, [r0, #GPIO_PUPDR]
-	LDR r6, =0x00000000					;clears input register
+	LDR r6, =0xFFFFFFFF					
 	STR r6, [r0, #GPIO_ODR]			
 
 	LDR r2, =RCC_BASE		
@@ -128,13 +131,16 @@ __main	PROC							;start main
 	LDR r2, =GPIOB_BASE					
 	LDR r3, [r2, #GPIO_MODER]
 	LDR r6, =0x00005050
-	AND r3, r6
-	STR r3, [r2, #GPIO_MODER]
+	STR r6, [r2, #GPIO_MODER]
+	LDR r6, =0xCC
+	LDR r3, [r2, #GPIO_OTYPER]
+	ORR r3, r6
+	STR r3, [r2, #GPIO_OTYPER]
 	LDR r6, =0xAAAAAAAA					;figure out what this 'masking' does
 	LDR r3, [r2, #GPIO_PUPDR] 			;adds a pull up, pull down reg to the input
 	ORR r3, r6 							;figure out what this does
 	STR r3, [r2, #GPIO_PUPDR]
-	LDR r6, =0x00000000	 				;clears input register
+	LDR r6, =0xFFFFFFFF	 				
 	STR r6, [r2, #GPIO_ODR]
 				
 	;Joystick setup pins PA0 to PA3 & PA5
@@ -169,7 +175,7 @@ HSIclk
 	LDR r0, =GPIOE_BASE	
 	
 loop
-	LDR r6, =0x30D40 	
+	LDR r6, =0x1046A	
 	mov r12, r6		 					;clk divider
 DELAY 
 	; center, stop
@@ -203,19 +209,19 @@ DELAY
 display
 	;load r9 into r10, mask the appropriate bits and set them to the right point of the output GPIOs
 	;bits 0 and 1 of counter, shift them and add them to r11 - to load into GPIO ports 2 and 3
-	MOV r10, r9
+	EOR r10, r9, 0xFFFFFFFF
 	MOV r11, #0x0
 	AND r10, #0x3
-	LSL r10, #4
-	ADD r11, r10
-	;bits 2 and 3 of counter, shift them and add them to r11 - to load into the GPIO ports 6 and 7
-	MOV r10, r9
-	ORR r10, #0xC
 	LSL r10, #2
-	ADD r11, r10
+	ORR r11, r10
+	;bits 2 and 3 of counter, shift them and add them to r11 - to load into the GPIO ports 6 and 7
+	EOR r10, r9, 0xFFFFFFFF
+	AND r10, #0xC
+	LSL r10, #4
+	ORR r11, r10
 	STR r11, [r2, #GPIO_ODR]
 	
-	MOV r10, r9
+	EOR r10, r9, 0xFFFFFFFF
 	AND r10, #0x3F0
 	LSL r10, #6
 	STR r10, [r0, #GPIO_ODR]
