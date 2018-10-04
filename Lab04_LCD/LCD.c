@@ -138,11 +138,27 @@ void LCD_PIN_Init(void){
 	//   SEG3 = PB13    SEG9  = PC7      SEG15 = PD14    SEG21 = PB0
 	//   SEG4 = PB15    SEG10 = PA15     SEG16 = PD12    SEG22 = PC4
 	//   SEG5 = PD9     SEG11 = PB4      SEG17 = PD10    SEG23 = PA6	
-
+	
+	// LCD_PIN_Init() enables GPIO clocks and configures GPIO pins as the alternative
+	// function 11 (LCD). This is the “LCD Clock Initialization” block in Figure 17-10.
+	
+	//switch to HSI clk
+	
+	
+	// Enable the clock of GPIO port A, B, C, and D
+	RCC->AHB2ENR |= 0xF; //page 252 of RM
+	
+	// sets pins to 0b11 (analoge mode, special for LCD) and all others off (reset state also 0b11). (page 303 RM)
+	GPIOA->MODER |= 0xFFFFFFFF; // Configure Port A Pin 6, 7, 8, 9, 10 and 15 as AF 11 (0xB)
+	GPIOB->MODER |= 0xFFFFFFFF; // Configure Port B Pin 0, 1, 4, 5, 9, 12, 13, 14 and 15 as AF 11 (0xB)
+	GPIOC->MODER |= 0xFFFFFFFF; // Configure Port C Pin 3, 4, 5, 6, 7, and 8 as AF 11 (0xB)
+	GPIOD->MODER |= 0xFFFFFFFF; // Configure Port D Pin 8, 9, 10, 11,12, 13, 14, and 15 as AF 11 (0xB)
 }
 
 void LCD_DisplayName(void){
-	
+	// LCD_DisplayName() displays the first six letters of your last name by populating
+	// the LCD RAM directly without calling any other functions. Hint – look at line 602
+	// of stm32l476xx.h.
 }
 
 void LCD_Clock_Init(void){
@@ -165,7 +181,7 @@ void LCD_Clock_Init(void){
 	RCC->BDCR &= ~RCC_BDCR_BDRST;
 	
 	// Note from STM32L4 Reference Manual: 	
-  // RTC/LCD Clock:  (1) LSE is in the Backup domain. (2) HSE and LSI are not.	
+	// RTC/LCD Clock:  (1) LSE is in the Backup domain. (2) HSE and LSI are not.	
 	while((RCC->BDCR & RCC_BDCR_LSERDY) == 0){  // Wait until LSE clock ready
 		RCC->BDCR |= RCC_BDCR_LSEON;
 	}
@@ -189,16 +205,48 @@ void LCD_Clock_Init(void){
 
 void LCD_Configure(void){
 	
+	// LCD_Configure() performs the LCD configuration. This is the “LCD Configuration”
+	// block in Figure 17-10. Remember to enable the display request in the LCD
+	// status register before exiting this function.
+	
+	// CR - control register
+	// FCR - frame control register
+	// SR - status register
+	
+	LCD_CR->BIAS |= 0b10; // Configure BIAS[1:0] bits of register LCD_CR and set the bias to 1/3 (pg 790 RM)
+	LCD_CR->DUTY |= 0b011; // Configure DUTY[2:0] bits of LCD_CR and set the duty to 1/4
+	LCD_FCR->CC |= 0b111; // Configure CC[2:0] bits of LCD_FCR and set the contrast to max value 111 (pg 792 RM)
+
+	// A short pulse consumes less power but might not provide satisfactory contrast.
+	LCD_FCR->PON |= 0b111; // Configure PON[2:0] bits of LCD_FCR an set the pulse on period to 111 (7/ck_ps).
+	LCD_CR->MUX_SEG |= 0b1; // Disable the MUX_SEG segment of LCD_CR
+	
+	LCD_CR->VSEL |= 0b0; // Select internal voltage as LCD voltage source (voltage step up converter) (pg 791 RM
+	
+	// there is a better way to do this...
+	if ((LCD_SR->FCRSF) == 0){
+		while((LCD_SR->FCRSF) == 0); // Wait unitl FCRSF flag of LCD_SR is set (frame control register synchronization flag) (pg 794 RM)
+	}
+	else{
+		LCD_CR->LCDEN |= 0b1; // Enable the LCD by setting LCDEN bit of LCD_CR
+	}
+	
+	if ((LCD_SR->ENS & RDY) == 0){
+		while((LCD_SR->ENS & RDY) == 0); // Wait until the LCD and booster is enabled by checking the ENS and RDY bit of LCD_SR
+	}
 }
 
 
 void LCD_Clear(void){
- 
+	// LCD_Clear() clears the LCD screen.
+	
 }
 
 
 void LCD_DisplayString(uint8_t* ptr){
-
+	// LCD_DisplayString() sets up the LCD_RAM and displays the input string on the
+	// LCD.
+	
 }
 
 
