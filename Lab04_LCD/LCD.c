@@ -142,23 +142,46 @@ void LCD_PIN_Init(void){
 	// LCD_PIN_Init() enables GPIO clocks and configures GPIO pins as the alternative
 	// function 11 (LCD). This is the “LCD Clock Initialization” block in Figure 17-10.
 	
-	//switch to HSI clk
+	//switch to HSI clk (pg 225 RM)
+	RCC->CR &= ~RCC_CR_HSION;
+	while(RCC_CR_HSIRDY == 0)
+	RCC->CR &= ~RCC_CR_MSION;
+	while(RCC_CR_MSIRDY == 1)
 	
 	
 	// Enable the clock of GPIO port A, B, C, and D
-	RCC->AHB2ENR |= 0xF; //page 252 of RM
+	RCC->AHB2ENR = 0xF; //pg 252
 	
 	// sets pins to 0b11 (analoge mode, special for LCD) and all others off (reset state also 0b11). (page 303 RM)
-	GPIOA->MODER |= 0xFFFFFFFF; // Configure Port A Pin 6, 7, 8, 9, 10 and 15 as AF 11 (0xB)
-	GPIOB->MODER |= 0xFFFFFFFF; // Configure Port B Pin 0, 1, 4, 5, 9, 12, 13, 14 and 15 as AF 11 (0xB)
-	GPIOC->MODER |= 0xFFFFFFFF; // Configure Port C Pin 3, 4, 5, 6, 7, and 8 as AF 11 (0xB)
-	GPIOD->MODER |= 0xFFFFFFFF; // Configure Port D Pin 8, 9, 10, 11,12, 13, 14, and 15 as AF 11 (0xB)
+	GPIOA->MODER |= 0x802AA000; // Configure Port A Pin 6, 7, 8, 9, 10 and 15 as AF 11 (0xB)
+	GPIOB->MODER |= 0xAA080A0A; // Configure Port B Pin 0, 1, 4, 5, 9, 12, 13, 14 and 15 as AF 11 (0xB)
+	GPIOC->MODER |= 0x0082AA80; // Configure Port C Pin 3, 4, 5, 6, 7, and 8 as AF 11 (0xB)
+	GPIOD->MODER |= 0xAAAA0000; // Configure Port D Pin 8, 9, 10, 11,12, 13, 14, and 15 as AF 11 (0xB)
+	
+	// set AFR (pg 307)
+	GPIOA->AFR[0] |= 0xBB000000;
+	GPIOA->AFR[1] |= 0xB0000BBB;
+	GPIOB->AFR[0] |= 0x00BB00BB;
+	GPIOB->AFR[1] |= 0xBBBB00B0;
+	GPIOC->AFR[0] |= 0xBBBBB000;
+	GPIOC->AFR[1] |= 0x0000000B;
+	GPIOD->AFR[0] |= 0x00000000;
+	GPIOD->AFR[1] |= 0xBBBBBBBB;
 }
 
 void LCD_DisplayName(void){
 	// LCD_DisplayName() displays the first six letters of your last name by populating
 	// the LCD RAM directly without calling any other functions. Hint – look at line 602
 	// of stm32l476xx.h.
+	
+	// update RAM
+	LCD->RAM[0] |= 0x04020300;
+	
+	// request update
+	LCD->SR |= LCD_SR_UDR;
+	
+	// wait until done
+	while ((LCD->SR & LCD_SR_UDD) != 0);
 }
 
 void LCD_Clock_Init(void){
@@ -213,40 +236,57 @@ void LCD_Configure(void){
 	// FCR - frame control register
 	// SR - status register
 	
-	LCD_CR->BIAS |= 0b10; // Configure BIAS[1:0] bits of register LCD_CR and set the bias to 1/3 (pg 790 RM)
-	LCD_CR->DUTY |= 0b011; // Configure DUTY[2:0] bits of LCD_CR and set the duty to 1/4
-	LCD_FCR->CC |= 0b111; // Configure CC[2:0] bits of LCD_FCR and set the contrast to max value 111 (pg 792 RM)
+	LCD->CR &= ~LCD_CR_BIAS; // Configure BIAS[1:0] bits of register LCD_CR and set the bias to 1/3 (pg 790 RM)
+	LCD->CR |= LCD_CR_BIAS_1; 
+	
+	LCD->CR &= ~LCD_CR_DUTY; // Configure DUTY[2:0] bits of LCD_CR and set the duty to 1/4
+	LCD->CR |= LCD_CR_DUTY_0;
+	LCD->CR |= LCD_CR_DUTY_1;
+	
+	LCD->FCR &= ~LCD_FCR_CC; // Configure CC[2:0] bits of LCD_FCR and set the contrast to max value 111 (pg 792 RM)
+	LCD->FCR |= LCD_FCR_CC;
 
 	// A short pulse consumes less power but might not provide satisfactory contrast.
-	LCD_FCR->PON |= 0b111; // Configure PON[2:0] bits of LCD_FCR an set the pulse on period to 111 (7/ck_ps).
-	LCD_CR->MUX_SEG |= 0b1; // Disable the MUX_SEG segment of LCD_CR
+	LCD->FCR &= ~LCD_FCR_PON; // Configure PON[2:0] bits of LCD_FCR an set the pulse on period to 111 (7/ck_ps).
+	LCD->FCR |= LCD_FCR_PON;
 	
-	LCD_CR->VSEL |= 0b0; // Select internal voltage as LCD voltage source (voltage step up converter) (pg 791 RM
+	LCD->CR &= ~LCD_CR_MUX_SEG; // Disable the MUX_SEG segment of LCD_CR
+	
+	LCD->CR &= ~LCD_CR_VSEL; // Select internal voltage as LCD voltage source (voltage step up converter) (pg 791 RM
 	
 	// there is a better way to do this...
-	if ((LCD_SR->FCRSF) == 0){
-		while((LCD_SR->FCRSF) == 0); // Wait unitl FCRSF flag of LCD_SR is set (frame control register synchronization flag) (pg 794 RM)
+	if ((LCD_SR_FCRSR) == 0){
+		while((LCD_SR_FCRSR) == 0); // Wait unitl FCRSF flag of LCD_SR is set (frame control register synchronization flag) (pg 794 RM)
 	}
 	else{
-		LCD_CR->LCDEN |= 0b1; // Enable the LCD by setting LCDEN bit of LCD_CR
+		LCD->CR &= ~LCD_CR_LCDEN; // Enable the LCD by setting LCDEN bit of LCD_CR
 	}
 	
-	if ((LCD_SR->ENS & RDY) == 0){
-		while((LCD_SR->ENS & RDY) == 0); // Wait until the LCD and booster is enabled by checking the ENS and RDY bit of LCD_SR
+	if ((LCD_SR_ENS & LCD_SR_RDY) == 0){
+		while((LCD_SR_ENS & LCD_SR_RDY) == 0); // Wait until the LCD and booster is enabled by checking the ENS and RDY bit of LCD_SR
 	}
 }
 
 
 void LCD_Clear(void){
 	// LCD_Clear() clears the LCD screen.
+	//Wait until the off-screen buffer has been unlocked
+	while ((LCD->SR & LCD_SR_UDR) != 0);
+
+	for (int i = 0; i <= 8; i++)
+		LCD-> RAM[i] = 0; //clear the buffer
 	
+	//Rquest to transfer data from off-screen buffer to on-screen buffer
+	LCD->SR |= LCD_SR_UDR;
 }
 
 
 void LCD_DisplayString(uint8_t* ptr){
 	// LCD_DisplayString() sets up the LCD_RAM and displays the input string on the
 	// LCD.
-	
+	for(int i = 0; i < 8; i++){
+		LCD_WriteChar(ptr, 0, 0, i);
+	}
 }
 
 
@@ -549,7 +589,7 @@ void LCD_WriteChar(uint8_t* ch, bool point, bool colon, uint8_t position){
   }
 
   /* Refresh LCD  bar */
-  //LCD_bar();
+  LCD_bar();
 
   // Update the LCD display 
 	// Set the Update Display Request.
