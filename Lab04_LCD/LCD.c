@@ -121,9 +121,9 @@ uint8_t t_bar[2] = {0x00,0x00};
 
 void LCD_Initialization(void){
 	LCD_PIN_Init();
-	//LCD_Clock_Init();	
-	//LCD_Configure();
-	//LCD_Clear();
+	LCD_Clock_Init();	
+	LCD_Configure();
+	LCD_Clear();
 }
 
 void LCD_PIN_Init(void){
@@ -199,14 +199,19 @@ void LCD_DisplayName(void){
 	// the LCD RAM directly without calling any other functions. Hint – look at line 602
 	// of stm32l476xx.h.
 	
+	LCD->CLR |= LCD_CLR_UDDC; //set UDC to clear UDD
 	// update RAM
 	LCD->RAM[0] |= 0x04020300;
+	LCD->RAM[1] |= 0x04020300;
+	LCD->RAM[2] |= 0x04020300;
+	LCD->RAM[3] |= 0x04020300;
+	LCD->RAM[4] |= 0x04020300;
 	
 	// request update
 	LCD->SR |= LCD_SR_UDR;
 	
 	// wait until done
-	while ((LCD->SR & LCD_SR_UDD) != 0);
+	while ((LCD->SR & LCD_SR_UDD) == 1);
 }
 
 void LCD_Clock_Init(void){
@@ -229,7 +234,7 @@ void LCD_Clock_Init(void){
 	RCC->BDCR &= ~RCC_BDCR_BDRST;
 	
 	// Note from STM32L4 Reference Manual: 	
-	// RTC/LCD Clock:  (1) LSE is in the Backup domain. (2) HSE and LSI are not.	
+  // RTC/LCD Clock:  (1) LSE is in the Backup domain. (2) HSE and LSI are not.	
 	while((RCC->BDCR & RCC_BDCR_LSERDY) == 0){  // Wait until LSE clock ready
 		RCC->BDCR |= RCC_BDCR_LSEON;
 	}
@@ -277,11 +282,10 @@ void LCD_Configure(void){
 	
 	LCD->CR &= ~LCD_CR_MUX_SEG; // Disable the MUX_SEG segment of LCD_CR
 	
-	LCD->CR &= ~LCD_CR_VSEL; // Select internal voltage as LCD voltage source (voltage step up converter) (pg 791 RM
+	LCD->CR |= LCD_CR_VSEL; // Select internal voltage as LCD voltage source (voltage step up converter) (pg 791 RM
 	
-	// there is a better way to do this...
 	while((LCD->SR & LCD_SR_FCRSR) == 1); // Wait unitl FCRSF flag of LCD_SR is set (frame control register synchronization flag) (pg 794 RM)
-	LCD->CR &= ~LCD_CR_LCDEN; // Enable the LCD by setting LCDEN bit of LCD_CR
+	LCD->CR |= LCD_CR_LCDEN; // Enable the LCD by setting LCDEN bit of LCD_CR
 	
 	while(((LCD->SR & LCD_SR_ENS) & (LCD->SR & LCD_SR_RDY)) == 1); // Wait until the LCD and booster is enabled by checking the ENS and RDY bit of LCD_SR
 }
@@ -292,6 +296,7 @@ void LCD_Clear(void){
 	//Wait until the off-screen buffer has been unlocked
 	int i = 0;
 	while ((LCD->SR & LCD_SR_UDR) == 1);
+	LCD->CLR |= LCD_CLR_UDDC; //set UDC to clear UD
 
 	for (i = 0; i <= 6; i++){
 		LCD->RAM[i] = 0; //clear the buffer
@@ -303,8 +308,8 @@ void LCD_Clear(void){
 
 
 void LCD_DisplayString(uint8_t* ptr){
-	// LCD_DisplayString() sets up the LCD_RAM and displays the input string on the
-	// LCD.
+	// LCD_DisplayString() sets up the LCD_RAM and displays the input string on the LCD
+	
 	int i = 0;
 	for(i = 0; i < 6; i++){
 		LCD_WriteChar(ptr, 0, 0, i);
@@ -317,7 +322,7 @@ void LCD_DisplayString(uint8_t* ptr){
 void LCD_bar(void) {
 
 	// TO wait LCD Ready *
-  while ((LCD->SR & LCD_SR_UDR) == 1); // Wait for Update Display Request Bit
+  while ((LCD->SR & LCD_SR_UDR) != 0); // Wait for Update Display Request Bit
 	// Bar 0: COM3, LCD_SEG11 -> MCU_LCD_SEG8
 	// Bar 1: COM2, LCD_SEG11 -> MCU_LCD_SEG8
 	// Bar 2: COM3, LCD_SEG9 -> MCU_LCD_SEG25
@@ -478,7 +483,7 @@ void LCD_WriteChar(uint8_t* ch, bool point, bool colon, uint8_t position){
   LCD_Conv_Char_Seg(ch, point, colon, digit);
 
   // TO wait LCD Ready *
-  while ((LCD->SR & LCD_SR_UDR) == 1); // Wait for Update Display Request Bit
+  while ((LCD->SR & LCD_SR_UDR) != 0); // Wait for Update Display Request Bit
   
   switch (position) {
 		
@@ -611,7 +616,7 @@ void LCD_WriteChar(uint8_t* ch, bool point, bool colon, uint8_t position){
   }
 
   /* Refresh LCD  bar */
-  LCD_bar();
+  //LCD_bar();
 
   // Update the LCD display 
 	// Set the Update Display Request.
