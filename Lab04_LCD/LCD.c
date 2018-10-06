@@ -121,9 +121,9 @@ uint8_t t_bar[2] = {0x00,0x00};
 
 void LCD_Initialization(void){
 	LCD_PIN_Init();
-	LCD_Clock_Init();	
-	LCD_Configure();
-	LCD_Clear();
+	//LCD_Clock_Init();	
+	//LCD_Configure();
+	//LCD_Clear();
 }
 
 void LCD_PIN_Init(void){
@@ -143,31 +143,53 @@ void LCD_PIN_Init(void){
 	// function 11 (LCD). This is the “LCD Clock Initialization” block in Figure 17-10.
 	
 	//switch to HSI clk (pg 225 RM)
-	RCC->CR &= ~RCC_CR_HSION;
-	while(RCC_CR_HSIRDY == 0)
-	RCC->CR &= ~RCC_CR_MSION;
-	while(RCC_CR_MSIRDY == 1)
+	RCC->CR |= RCC_CR_HSION;
+	while(RCC_CR_HSIRDY == 0);
+	//RCC->CR &= ~RCC_CR_MSION;
+	//while(RCC_CR_MSIRDY == 1);
 	
 	
 	// Enable the clock of GPIO port A, B, C, and D
-	RCC->AHB2ENR = 0xF; //pg 252
+	RCC->AHB2ENR |= 0xF; //pg 252
 	
-	// sets pins to 0b11 (analog mode, special for LCD) and all others off (reset state also 0b11). (page 303 RM)
-	GPIOA->MODER |= 0x802AA000; // Configure Port A Pin 6, 7, 8, 9, 10 and 15 as AF 11 (0xB)
-	GPIOB->MODER |= 0xAA080A0A; // Configure Port B Pin 0, 1, 4, 5, 9, 12, 13, 14 and 15 as AF 11 (0xB)
-	GPIOC->MODER |= 0x0082AA80; // Configure Port C Pin 3, 4, 5, 6, 7, and 8 as AF 11 (0xB)
-	GPIOD->MODER |= 0xAAAA0000; // Configure Port D Pin 8, 9, 10, 11,12, 13, 14, and 15 as AF 11 (0xB)
+	// sets pins to AF mode (0b10). (page 303 RM)
+	// 00: input mode, 01: output mode, 10: alternate function mode, 11: analog/reset state mode
 	
-	// set AFR (pg 307)
+	// selectively clear and set bits to AF mode
+	// Configure Port A Pin 6, 7, 8, 9, 10 and 15
+	GPIOA->MODER &= ~(GPIO_MODER_MODE6_0 | GPIO_MODER_MODE7_0 | GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE10_0 | GPIO_MODER_MODE15_0);
+	GPIOA->MODER |= (GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1 | GPIO_MODER_MODE8_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE10_1 | GPIO_MODER_MODE15_1);
+	
+	// Configure Port B Pin 0, 1, 4, 5, 9, 12, 13, 14 and 15
+	GPIOB->MODER &= ~(GPIO_MODER_MODE0_0 | GPIO_MODER_MODE1_0 | GPIO_MODER_MODE4_0 | GPIO_MODER_MODE5_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE12_0 | GPIO_MODER_MODE13_0 | GPIO_MODER_MODE14_0 | GPIO_MODER_MODE15_0);
+	GPIOB->MODER |= (GPIO_MODER_MODE0_1 | GPIO_MODER_MODE1_1 | GPIO_MODER_MODE4_1 | GPIO_MODER_MODE5_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE12_1 | GPIO_MODER_MODE13_1 | GPIO_MODER_MODE14_1 | GPIO_MODER_MODE15_1);
+	
+	// Configure Port C Pin 3, 4, 5, 6, 7, and 8
+	GPIOC->MODER &= ~(GPIO_MODER_MODE3_0 | GPIO_MODER_MODE4_0 | GPIO_MODER_MODE5_0 | GPIO_MODER_MODE6_0 | GPIO_MODER_MODE7_0 | GPIO_MODER_MODE8_0);
+	GPIOC->MODER |= (GPIO_MODER_MODE3_1 | GPIO_MODER_MODE4_1 | GPIO_MODER_MODE5_1 | GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1 | GPIO_MODER_MODE8_1);
+	
+	// Configure Port D Pin 8, 9, 10, 11,12, 13, 14, and 15
+	GPIOD->MODER &= ~(GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE10_0 | GPIO_MODER_MODE11_0 | GPIO_MODER_MODE12_0 | GPIO_MODER_MODE13_0 | GPIO_MODER_MODE14_0 | GPIO_MODER_MODE15_0);
+	GPIOD->MODER |= (GPIO_MODER_MODE8_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE10_1 | GPIO_MODER_MODE11_1 | GPIO_MODER_MODE12_1 | GPIO_MODER_MODE13_1 | GPIO_MODER_MODE14_1 | GPIO_MODER_MODE15_1);
+
+	// set AFR as AF 11 (0xB) in GPIOs (pg 307 RM)
+	GPIOA->AFR[0] &= 0x0;
+	GPIOA->AFR[1] &= 0x0;
 	GPIOA->AFR[0] |= 0xBB000000;
 	GPIOA->AFR[1] |= 0xB0000BBB;
 	
+	GPIOB->AFR[0] &= 0x0;
+	GPIOB->AFR[1] &= 0x0;
 	GPIOB->AFR[0] |= 0x00BB00BB;
 	GPIOB->AFR[1] |= 0xBBBB00B0;
 	
+	GPIOC->AFR[0] &= 0x0;
+	GPIOC->AFR[1] &= 0x0;
 	GPIOC->AFR[0] |= 0xBBBBB000;
 	GPIOC->AFR[1] |= 0x0000000B;
 	
+	GPIOD->AFR[0] &= 0x0;
+	GPIOD->AFR[1] &= 0x0;
 	GPIOD->AFR[0] |= 0x00000000;
 	GPIOD->AFR[1] |= 0xBBBBBBBB;
 }
@@ -258,19 +280,20 @@ void LCD_Configure(void){
 	LCD->CR &= ~LCD_CR_VSEL; // Select internal voltage as LCD voltage source (voltage step up converter) (pg 791 RM
 	
 	// there is a better way to do this...
-	while((LCD->SR & LCD_SR_FCRSR) == 0); // Wait unitl FCRSF flag of LCD_SR is set (frame control register synchronization flag) (pg 794 RM)
+	while((LCD->SR & LCD_SR_FCRSR) == 1); // Wait unitl FCRSF flag of LCD_SR is set (frame control register synchronization flag) (pg 794 RM)
 	LCD->CR &= ~LCD_CR_LCDEN; // Enable the LCD by setting LCDEN bit of LCD_CR
 	
-	while(((LCD->SR & LCD_SR_ENS) & (LCD->SR & LCD_SR_RDY)) == 0); // Wait until the LCD and booster is enabled by checking the ENS and RDY bit of LCD_SR
+	while(((LCD->SR & LCD_SR_ENS) & (LCD->SR & LCD_SR_RDY)) == 1); // Wait until the LCD and booster is enabled by checking the ENS and RDY bit of LCD_SR
 }
 
 
 void LCD_Clear(void){
 	// LCD_Clear() clears the LCD screen.
 	//Wait until the off-screen buffer has been unlocked
-	while ((LCD->SR & LCD_SR_UDR) != 0);
+	int i = 0;
+	while ((LCD->SR & LCD_SR_UDR) == 1);
 
-	for (int i = 0; i <= 8; i++){
+	for (i = 0; i <= 6; i++){
 		LCD->RAM[i] = 0; //clear the buffer
 	}
 	
@@ -282,7 +305,8 @@ void LCD_Clear(void){
 void LCD_DisplayString(uint8_t* ptr){
 	// LCD_DisplayString() sets up the LCD_RAM and displays the input string on the
 	// LCD.
-	for(int i = 0; i < 8; i++){
+	int i = 0;
+	for(i = 0; i < 6; i++){
 		LCD_WriteChar(ptr, 0, 0, i);
 	}
 }
@@ -293,7 +317,7 @@ void LCD_DisplayString(uint8_t* ptr){
 void LCD_bar(void) {
 
 	// TO wait LCD Ready *
-  while ((LCD->SR & LCD_SR_UDR) != 0); // Wait for Update Display Request Bit
+  while ((LCD->SR & LCD_SR_UDR) == 1); // Wait for Update Display Request Bit
 	// Bar 0: COM3, LCD_SEG11 -> MCU_LCD_SEG8
 	// Bar 1: COM2, LCD_SEG11 -> MCU_LCD_SEG8
 	// Bar 2: COM3, LCD_SEG9 -> MCU_LCD_SEG25
@@ -454,7 +478,7 @@ void LCD_WriteChar(uint8_t* ch, bool point, bool colon, uint8_t position){
   LCD_Conv_Char_Seg(ch, point, colon, digit);
 
   // TO wait LCD Ready *
-  while ((LCD->SR & LCD_SR_UDR) != 0); // Wait for Update Display Request Bit
+  while ((LCD->SR & LCD_SR_UDR) == 1); // Wait for Update Display Request Bit
   
   switch (position) {
 		
