@@ -1,5 +1,5 @@
 #include "stm32l476xx.h"
-#include "lcd.h"
+#include "LCD.h"
 
 //*************************************  32L476GDISCOVERY ***************************************************************************
 // STM32L4:  STM32L476VGT6 MCU = ARM Cortex-M4 + FPU + DSP, 
@@ -68,8 +68,8 @@ int main(void){
 	
 	LCD_Initialization();
 	LCD_Clear();
-	//LCD_DisplayString((uint8_t*)"Test");
-	//LCD_DisplayName();
+	//LCD_DisplayString((uint8_t*)"FINALY");
+	LCD_DisplayName();
 	while(1);
 }
 

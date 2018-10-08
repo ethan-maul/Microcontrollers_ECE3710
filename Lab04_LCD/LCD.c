@@ -142,36 +142,14 @@ void LCD_PIN_Init(void){
 	// LCD_PIN_Init() enables GPIO clocks and configures GPIO pins as the alternative
 	// function 11 (LCD). This is the “LCD Clock Initialization” block in Figure 17-10.
 	
-	//switch to HSI clk (pg 225 RM)
+	//switch HSI clk on (pg 225 RM)
 	RCC->CR |= RCC_CR_HSION;
 	while(RCC_CR_HSIRDY == 0);
-	//RCC->CR &= ~RCC_CR_MSION;
-	//while(RCC_CR_MSIRDY == 1);
-	
 	
 	// Enable the clock of GPIO port A, B, C, and D
 	RCC->AHB2ENR |= 0xF; //pg 252
 	
-	// sets pins to AF mode (0b10). (page 303 RM)
-	// 00: input mode, 01: output mode, 10: alternate function mode, 11: analog/reset state mode
-	
-	// selectively clear and set bits to AF mode
-	// Configure Port A Pin 6, 7, 8, 9, 10 and 15
-	GPIOA->MODER &= ~(GPIO_MODER_MODE6_0 | GPIO_MODER_MODE7_0 | GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE10_0 | GPIO_MODER_MODE15_0);
-	GPIOA->MODER |= (GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1 | GPIO_MODER_MODE8_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE10_1 | GPIO_MODER_MODE15_1);
-	
-	// Configure Port B Pin 0, 1, 4, 5, 9, 12, 13, 14 and 15
-	GPIOB->MODER &= ~(GPIO_MODER_MODE0_0 | GPIO_MODER_MODE1_0 | GPIO_MODER_MODE4_0 | GPIO_MODER_MODE5_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE12_0 | GPIO_MODER_MODE13_0 | GPIO_MODER_MODE14_0 | GPIO_MODER_MODE15_0);
-	GPIOB->MODER |= (GPIO_MODER_MODE0_1 | GPIO_MODER_MODE1_1 | GPIO_MODER_MODE4_1 | GPIO_MODER_MODE5_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE12_1 | GPIO_MODER_MODE13_1 | GPIO_MODER_MODE14_1 | GPIO_MODER_MODE15_1);
-	
-	// Configure Port C Pin 3, 4, 5, 6, 7, and 8
-	GPIOC->MODER &= ~(GPIO_MODER_MODE3_0 | GPIO_MODER_MODE4_0 | GPIO_MODER_MODE5_0 | GPIO_MODER_MODE6_0 | GPIO_MODER_MODE7_0 | GPIO_MODER_MODE8_0);
-	GPIOC->MODER |= (GPIO_MODER_MODE3_1 | GPIO_MODER_MODE4_1 | GPIO_MODER_MODE5_1 | GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1 | GPIO_MODER_MODE8_1);
-	
-	// Configure Port D Pin 8, 9, 10, 11,12, 13, 14, and 15
-	GPIOD->MODER &= ~(GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE10_0 | GPIO_MODER_MODE11_0 | GPIO_MODER_MODE12_0 | GPIO_MODER_MODE13_0 | GPIO_MODER_MODE14_0 | GPIO_MODER_MODE15_0);
-	GPIOD->MODER |= (GPIO_MODER_MODE8_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE10_1 | GPIO_MODER_MODE11_1 | GPIO_MODER_MODE12_1 | GPIO_MODER_MODE13_1 | GPIO_MODER_MODE14_1 | GPIO_MODER_MODE15_1);
-
+	// configure AFR first, doesn't cause wild flashes on LCD
 	// set AFR as AF 11 (0xB) in GPIOs (pg 307 RM)
 	GPIOA->AFR[0] &= 0x0;
 	GPIOA->AFR[1] &= 0x0;
@@ -192,6 +170,25 @@ void LCD_PIN_Init(void){
 	GPIOD->AFR[1] &= 0x0;
 	GPIOD->AFR[0] |= 0x00000000;
 	GPIOD->AFR[1] |= 0xBBBBBBBB;
+	
+	// selectively clear and set pins to AF mode (0b10). (page 303 RM)
+	// 00: input mode, 01: output mode, 10: alternate function mode, 11: analog/reset state mode
+	
+	// Configure Port A Pin 6, 7, 8, 9, 10 and 15
+	GPIOA->MODER &= ~(GPIO_MODER_MODE6_0 | GPIO_MODER_MODE7_0 | GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE10_0 | GPIO_MODER_MODE15_0);
+	GPIOA->MODER |= (GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1 | GPIO_MODER_MODE8_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE10_1 | GPIO_MODER_MODE15_1);
+	
+	// Configure Port B Pin 0, 1, 4, 5, 9, 12, 13, 14 and 15
+	GPIOB->MODER &= ~(GPIO_MODER_MODE0_0 | GPIO_MODER_MODE1_0 | GPIO_MODER_MODE4_0 | GPIO_MODER_MODE5_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE12_0 | GPIO_MODER_MODE13_0 | GPIO_MODER_MODE14_0 | GPIO_MODER_MODE15_0);
+	GPIOB->MODER |= (GPIO_MODER_MODE0_1 | GPIO_MODER_MODE1_1 | GPIO_MODER_MODE4_1 | GPIO_MODER_MODE5_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE12_1 | GPIO_MODER_MODE13_1 | GPIO_MODER_MODE14_1 | GPIO_MODER_MODE15_1);
+	
+	// Configure Port C Pin 3, 4, 5, 6, 7, and 8
+	GPIOC->MODER &= ~(GPIO_MODER_MODE3_0 | GPIO_MODER_MODE4_0 | GPIO_MODER_MODE5_0 | GPIO_MODER_MODE6_0 | GPIO_MODER_MODE7_0 | GPIO_MODER_MODE8_0);
+	GPIOC->MODER |= (GPIO_MODER_MODE3_1 | GPIO_MODER_MODE4_1 | GPIO_MODER_MODE5_1 | GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1 | GPIO_MODER_MODE8_1);
+	
+	// Configure Port D Pin 8, 9, 10, 11,12, 13, 14, and 15
+	GPIOD->MODER &= ~(GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE10_0 | GPIO_MODER_MODE11_0 | GPIO_MODER_MODE12_0 | GPIO_MODER_MODE13_0 | GPIO_MODER_MODE14_0 | GPIO_MODER_MODE15_0);
+	GPIOD->MODER |= (GPIO_MODER_MODE8_1 | GPIO_MODER_MODE9_1 | GPIO_MODER_MODE10_1 | GPIO_MODER_MODE11_1 | GPIO_MODER_MODE12_1 | GPIO_MODER_MODE13_1 | GPIO_MODER_MODE14_1 | GPIO_MODER_MODE15_1);
 }
 
 void LCD_DisplayName(void){
@@ -199,19 +196,20 @@ void LCD_DisplayName(void){
 	// the LCD RAM directly without calling any other functions. Hint – look at line 602
 	// of stm32l476xx.h.
 	
-	LCD->CLR |= LCD_CLR_UDDC; //set UDC to clear UDD
-	// update RAM
-	LCD->RAM[0] |= 0x04020300;
-	LCD->RAM[1] |= 0x04020300;
-	LCD->RAM[2] |= 0x04020300;
-	LCD->RAM[3] |= 0x04020300;
-	LCD->RAM[4] |= 0x04020300;
+	//wait for UDR to be cleared
+	while ((LCD->SR & LCD_SR_UDR) != 0); // Wait for Update Display Request Bit
 	
+	// update RAM, this is weird. Look at slide 17 and 22 on ch17 slides
+	// spells MAUL
+	LCD->RAM[0] = 0x9040B070;
+	LCD->RAM[2] = 0xE0C0F028;
+	LCD->RAM[6] = 0x400000;
+
 	// request update
 	LCD->SR |= LCD_SR_UDR;
 	
-	// wait until done
-	while ((LCD->SR & LCD_SR_UDD) == 1);
+	// wait until done updating
+	while ((LCD->SR & LCD_SR_UDD) == 0);
 }
 
 void LCD_Clock_Init(void){
@@ -282,20 +280,21 @@ void LCD_Configure(void){
 	
 	LCD->CR &= ~LCD_CR_MUX_SEG; // Disable the MUX_SEG segment of LCD_CR
 	
-	LCD->CR |= LCD_CR_VSEL; // Select internal voltage as LCD voltage source (voltage step up converter) (pg 791 RM
+	LCD->CR &= ~LCD_CR_VSEL; // Select internal voltage as LCD voltage source (voltage step up converter) (pg 791 RM) changes voltage source to internal
 	
-	while((LCD->SR & LCD_SR_FCRSR) == 1); // Wait unitl FCRSF flag of LCD_SR is set (frame control register synchronization flag) (pg 794 RM)
+	while((LCD->SR & LCD_SR_FCRSR) == 0); // Wait unitl FCRSF flag of LCD_SR is set (frame control register synchronization flag) (pg 794 RM)
 	LCD->CR |= LCD_CR_LCDEN; // Enable the LCD by setting LCDEN bit of LCD_CR
 	
-	while(((LCD->SR & LCD_SR_ENS) & (LCD->SR & LCD_SR_RDY)) == 1); // Wait until the LCD and booster is enabled by checking the ENS and RDY bit of LCD_SR
+	while((LCD->SR & LCD_SR_ENS) == 0);
+	while((LCD->SR & LCD_SR_RDY) == 0); // Wait until the LCD and booster is enabled by checking the ENS and RDY bit of LCD_SR
 }
 
 
 void LCD_Clear(void){
 	// LCD_Clear() clears the LCD screen.
-	//Wait until the off-screen buffer has been unlocked
 	int i = 0;
-	while ((LCD->SR & LCD_SR_UDR) == 1);
+	
+	while ((LCD->SR & LCD_SR_UDR) == 1); //Wait until the off-screen buffer has been unlocked
 	LCD->CLR |= LCD_CLR_UDDC; //set UDC to clear UD
 
 	for (i = 0; i <= 6; i++){
@@ -309,10 +308,10 @@ void LCD_Clear(void){
 
 void LCD_DisplayString(uint8_t* ptr){
 	// LCD_DisplayString() sets up the LCD_RAM and displays the input string on the LCD
-	
 	int i = 0;
+	
 	for(i = 0; i < 6; i++){
-		LCD_WriteChar(ptr, 0, 0, i);
+		LCD_WriteChar(ptr + i, 0, 0, i); //ptr is a number, this is how to increment through it and also change positions on LCD
 	}
 }
 
