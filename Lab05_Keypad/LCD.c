@@ -116,6 +116,7 @@ uint8_t t_bar[2] = {0x00,0x00};
 /* constant code for small o */
 #define C_PERCENT_2           ((uint16_t) 0xb300)
 
+// turns on all bits
 #define C_FULL                ((uint16_t) 0xffdd)
 
 
@@ -414,6 +415,10 @@ static void LCD_Conv_Char_Seg(uint8_t* c, bool point, bool colon, uint8_t* digit
     case '%' :
       ch = C_PERCENT_2; 
       break;
+		
+		case '#' :
+			ch = C_FULL;
+			break;
 		
     case 255 :
       ch = C_FULL;
